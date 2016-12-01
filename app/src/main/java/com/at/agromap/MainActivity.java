@@ -8,15 +8,17 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.esri.arcgisruntime.concurrent.Job;
-import com.esri.arcgisruntime.concurrent.ListenableFuture;
-import com.esri.arcgisruntime.geometry.Geometry;
-import com.esri.arcgisruntime.mapping.ArcGISMap;
-import com.esri.arcgisruntime.mapping.Basemap;
-import com.esri.arcgisruntime.mapping.view.MapView;
-import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseJob;
-import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseParameters;
-import com.esri.arcgisruntime.tasks.geodatabase.GeodatabaseSyncTask;
+//import com.esri.arcgisruntime.concurrent.Job;
+//import com.esri.arcgisruntime.concurrent.ListenableFuture;
+//import com.esri.arcgisruntime.geometry.Geometry;
+//import com.esri.arcgisruntime.mapping.ArcGISMap;
+//import com.esri.arcgisruntime.mapping.Basemap;
+//import com.esri.arcgisruntime.mapping.view.MapView;
+//import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseJob;
+//import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseParameters;
+//import com.esri.arcgisruntime.tasks.geodatabase.GeodatabaseSyncTask;
+
+import com.esri.android.map.MapView;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -34,11 +36,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mMapView = (MapView) findViewById(R.id.mapView);
-        ArcGISMap map = new ArcGISMap(Basemap.Type.IMAGERY, 34.056295, -117.195800, 16);
-        mMapView.setMap(map);
+        mMapView = (MapView) findViewById(R.id.map);
 
-        syncGdb.createSyncTaskAndParameters();
+//        ArcGISMap map = new ArcGISMap(Basemap.Type.IMAGERY, 34.056295, -117.195800, 16);
+//        mMapView.setMap(map);
+
+//        syncGdb.createSyncTaskAndParameters();
 
     }
 
@@ -51,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mMapView.resume();
+        mMapView.unpause();
     }
     // Toast for display result of sync operation
     public void showToastSyncResult(CharSequence msgSyncResultText) {
