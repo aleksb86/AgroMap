@@ -1,18 +1,25 @@
 package com.at.agromap;
 
 import android.app.ActivityManager;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.ComponentName;
+import android.content.Context;
 import android.util.Log;
+import android.widget.TextView;
 
-//import com.esri.arcgisruntime.concurrent.Job;
-//import com.esri.arcgisruntime.concurrent.ListenableFuture;
-//import com.esri.arcgisruntime.geometry.Geometry;
-//import com.esri.arcgisruntime.geometry.SpatialReference;
-//import com.esri.arcgisruntime.mapping.view.MapView;
-//import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseJob;
-//import com.esri.arcgisruntime.tasks.geodatabase.GenerateGeodatabaseParameters;
-//import com.esri.arcgisruntime.tasks.geodatabase.GeodatabaseSyncTask;
+import com.esri.android.map.FeatureLayer;
+import com.esri.android.map.MapView;
+import com.esri.core.ags.FeatureServiceInfo;
+import com.esri.core.geodatabase.Geodatabase;
+import com.esri.core.geodatabase.GeodatabaseFeatureTable;
+import com.esri.core.map.CallbackListener;
+import com.esri.core.tasks.geodatabase.GenerateGeodatabaseParameters;
+import com.esri.core.tasks.geodatabase.GeodatabaseStatusCallback;
+import com.esri.core.tasks.geodatabase.GeodatabaseStatusInfo;
+import com.esri.core.tasks.geodatabase.GeodatabaseSyncTask;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -26,86 +33,133 @@ import static com.at.agromap.R.id.text;
 
 public class SyncGeodatabase {
 
-//    private static final String TAG = "Map";
+    private static final String TAG = "Map";
+    private static Dialog dialog = null;
 //    private GeodatabaseSyncTask gdbSyncTask;
 //    private Geometry syncGdbExtent = new Geometry();
 //    private static SpatialReference spatialRef = SpatialReference.create(102100);
-//
-//    void createSyncTaskAndParameters() {
-//
-//        // create a new GeodatabaseSyncTask to create a local version of feature service data, passing in the service url
-//        String featureServiceUri = "http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer";
-//        gdbSyncTask = new GeodatabaseSyncTask(featureServiceUri);
-//
-//        // get the default parameters for generating a geodatabase
-//        // TODO: для syncGdbExtent ДОЛЖНО быть какое-то значение типа Geometry
-//        final ListenableFuture<GenerateGeodatabaseParameters> paramsFuture =
-//                gdbSyncTask.createDefaultGenerateGeodatabaseParametersAsync(syncGdbExtent);
-//
-//        paramsFuture.addDoneListener(new Runnable() {
-//            @Override
-//            public void run() {
-//                try {
-//                    // get default parameters
-//                    GenerateGeodatabaseParameters generateGeodatabaseParameters = paramsFuture.get();
-//
-//                    // make any changes required to the parameters, for example do not return attachments
-//                    generateGeodatabaseParameters.setReturnAttachments(false);
-//
-//                    // optionally, specify the spatial reference of the geodatabase to be generated
-//                    generateGeodatabaseParameters.setOutSpatialReference(spatialRef);
-//
-//                    // call a function to generate the geodatabase
-//                    generateGeodatabase(generateGeodatabaseParameters);
-//                }
-//                catch (InterruptedException | ExecutionException e) {
-//                    Log.v(TAG, e.getMessage());
-//                }
-//            }
-//        });
-//    }
-//
-//    void generateGeodatabase(final GenerateGeodatabaseParameters parameters) {
-//
-//        // create the generate geodatabase job, pass in the parameters and an output path for the local geodatabase
-//        final GenerateGeodatabaseJob generateGeodatabaseJob =
-//                gdbSyncTask.generateGeodatabaseAsync(parameters, "gdb_file.gdb");
-//
-//        // add a job changed listener to check the status of the job
-//        generateGeodatabaseJob.addJobChangedListener(new Runnable() {
-//            @Override
-//            public void run() {
-//                // for example, if the job is still running, report the last message to the user
-//                final List<Job.Message> messages = generateGeodatabaseJob.getMessages();
-////                updateUiWithProgress(messages.get(messages.size() - 1).getMessage());
-//            }
-//        });
-//
-//        // add a job done listener to deal with job completion - success or failure
-//        generateGeodatabaseJob.addJobDoneListener(new Runnable() {
-//            @Override
-//            public void run() {
-//                if (generateGeodatabaseJob.getStatus() == Job.Status.FAILED) {
-//                    // deal with job failure - check the error details on the job
-////                    dealWithJobDoneFailed(generateGeodatabaseJob.getError());
-//
-//                    return;
-//                }
-//                else if (generateGeodatabaseJob.getStatus() == Job.Status.SUCCEEDED)
-//                {
-//                    // if the job succeeded, the geodatabase is now available at the given local path.
-//                    // add local data from the geodatabase to the map - see following section...
-////                    addGeodatabaseLayerToMap();
-//                }
-//            }
-//        });
-//
-//        // start the job to generate and download the geodatabase
-//        generateGeodatabaseJob.start();
-//    }
+    private static MapView mapView = null;
+    static GeodatabaseSyncTask gdbSyncTask;
+    static String localGdbFilePath = "offline_geodb_file.gdb";
+    static String returnGdbPath = "";
+
+    SyncGeodatabase(MapView outerMapView) {
+        this.mapView = outerMapView;
+    }
+
+    public String getGdbPath() {
+        return returnGdbPath;
+    }
+
+    /**
+     * Create the GeodatabaseTask from the feature service URL w/o credentials.
+     */
+    public void downloadData(String url, Context context) {
+        Log.i(TAG, "Create GeoDatabase");
+        // create a dialog to update user on progress
+        dialog = ProgressDialog.show(context, "Download Data", "Create local runtime geodatabase");
+        dialog.show();
+
+        // create the GeodatabaseTask
+        gdbSyncTask = new GeodatabaseSyncTask(url, null);
+        gdbSyncTask.fetchFeatureServiceInfo(new CallbackListener<FeatureServiceInfo>() {
+
+            @Override
+            public void onError(Throwable arg0) {
+                Log.e(TAG, "Error fetching FeatureServiceInfo");
+            }
+
+            @Override
+            public void onCallback(FeatureServiceInfo fsInfo) {
+                if (fsInfo.isSyncEnabled()) {
+                    createGeodatabase(fsInfo, mapView);
+                }
+            }
+        });
+
+    }
+
+    /**
+     * Set up parameters to pass the the submitTask() method. A
+     * CallbackListener is used for the response.
+     */
+    private static void createGeodatabase(FeatureServiceInfo featureServerInfo, MapView mMapView) {
+        // set up the parameters to generate a geodatabase
+        GenerateGeodatabaseParameters params = new GenerateGeodatabaseParameters(featureServerInfo, mMapView.getExtent(),
+                mMapView.getSpatialReference());
+
+        // a callback which fires when the task has completed or failed.
+        CallbackListener<String> gdbResponseCallback = new CallbackListener<String>() {
+            @Override
+            public void onError(final Throwable e) {
+                Log.e(TAG, "Error creating geodatabase");
+                dialog.dismiss();
+            }
+
+            @Override
+            public void onCallback(String path) {
+                Log.i(TAG, "Geodatabase is: " + path);
+                dialog.dismiss();
+                // update map with local feature layer from geodatabase
+                updateFeatureLayer(path, mapView);
+
+            }
+        };
+
+        // a callback which updates when the status of the task changes
+        GeodatabaseStatusCallback statusCallback = new GeodatabaseStatusCallback() {
+            @Override
+            public void statusUpdated(GeodatabaseStatusInfo status) {
+                Log.i(TAG, status.getStatus().toString());
+
+            }
+        };
+
+        // create the fully qualified path for geodatabase file
+//        localGdbFilePath = createGeodatabaseFilePath();
+
+        // get geodatabase based on params
+        submitTask(params, localGdbFilePath, statusCallback, gdbResponseCallback);
+    }
+
+
+    /**
+     * Request database, poll server to get status, and download the file
+     */
+    private static void submitTask(GenerateGeodatabaseParameters params, String file,
+                                   GeodatabaseStatusCallback statusCallback, CallbackListener<String> gdbResponseCallback) {
+        // submit task
+        gdbSyncTask.generateGeodatabase(params, file, false, statusCallback, gdbResponseCallback);
+    }
+
+    /**
+     * Add feature layer from local geodatabase to map
+     */
+    private static void updateFeatureLayer(String featureLayerPath, MapView mMapView) {
+        // create a new geodatabase
+        Geodatabase localGdb = null;
+        try {
+            localGdb = new Geodatabase(featureLayerPath);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        // Geodatabase contains GdbFeatureTables representing attribute data
+        // and/or spatial data. If GdbFeatureTable has geometry add it to
+        // the MapView as a Feature Layer
+        if (localGdb != null) {
+            for (GeodatabaseFeatureTable gdbFeatureTable : localGdb.getGeodatabaseTables()) {
+                if (gdbFeatureTable.hasGeometry())
+                    mMapView.addLayer(new FeatureLayer(gdbFeatureTable));
+            }
+        }
+        // display the path to local geodatabase
+        returnGdbPath = featureLayerPath;
+//        pathView.setText(featureLayerPath);
+
+    }
 
     /*
     Misc methods
      */
-
 }

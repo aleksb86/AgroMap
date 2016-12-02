@@ -2,10 +2,12 @@ package com.at.agromap;
 
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 //import com.esri.arcgisruntime.concurrent.Job;
@@ -25,11 +27,11 @@ import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
-    private MapView mMapView;
-    private static SyncGeodatabase syncGdb = new SyncGeodatabase();
+    private static MapView mMapView;
+    private static SyncGeodatabase syncGdb = new SyncGeodatabase(mMapView);
 //    private static CharSequence msgSyncResultText = "";
     private static final int duration = Toast.LENGTH_SHORT;
-//    private Dialog dialog;
+    private static TextView pathView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +39,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mMapView = (MapView) findViewById(R.id.map);
+        pathView = (TextView) findViewById(R.id.pathView);
+
+        syncGdb.downloadData("url", mMapView.getContext());
 
 //        ArcGISMap map = new ArcGISMap(Basemap.Type.IMAGERY, 34.056295, -117.195800, 16);
 //        mMapView.setMap(map);
