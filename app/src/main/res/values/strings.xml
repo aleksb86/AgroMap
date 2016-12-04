@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Agro Map</string>
+    <string name="basemap_service_url">http://agrp.agroterra.ru/gisportal/sharing/
+        servers/bdb15dee71474e8f868450fbe527faec/rest/services/World_Street_Map/MapServer
+    </string>
 </resources>

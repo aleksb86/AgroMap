@@ -120,6 +120,7 @@ public class SyncGeodatabase {
 
         // get geodatabase based on params
         submitTask(params, localGdbFilePath, statusCallback, gdbResponseCallback);
+        dialog.hide();
     }
 
 

@@ -32,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
 //    private static CharSequence msgSyncResultText = "";
     private static final int duration = Toast.LENGTH_SHORT;
     private static TextView pathView;
+    Boolean isSDPresent = android.os.Environment
+            .getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,10 +43,13 @@ public class MainActivity extends AppCompatActivity {
         mMapView = (MapView) findViewById(R.id.map);
         pathView = (TextView) findViewById(R.id.pathView);
 
-        syncGdb.downloadData("url", mMapView.getContext());
+        if (isSDPresent) {
+            pathView.setText("SD card available");
+        } else {
+            pathView.setText("SD card not found!");
+        }
 
-//        ArcGISMap map = new ArcGISMap(Basemap.Type.IMAGERY, 34.056295, -117.195800, 16);
-//        mMapView.setMap(map);
+//        syncGdb.downloadData(getString(R.string.basemap_service_url), mMapView.getContext());
 
 //        syncGdb.createSyncTaskAndParameters();
 
@@ -65,7 +70,5 @@ public class MainActivity extends AppCompatActivity {
     public void showToastSyncResult(CharSequence msgSyncResultText) {
         Toast.makeText(getApplicationContext(), msgSyncResultText, duration).show();
     }
-    // begin sync task
 
-    // end sync task
 }
