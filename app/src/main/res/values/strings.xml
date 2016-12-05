@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">Agro Map</string>
-    <string name="basemap_service_url">http://agrp.agroterra.ru/gisportal/sharing/
-        servers/bdb15dee71474e8f868450fbe527faec/rest/services/World_Street_Map/MapServer
-    </string>
+    <!--<string name="basemap_service_url">http://agrp.agroterra.ru/gisportal/sharing/servers/bdb15dee71474e8f868450fbe527faec/rest/services/World_Street_Map/MapServer</string>-->
+    <string name="basemap_service_url">http://sampleserver6.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer</string>
+    <!-- TODO: надо добавить реальный путь к каталогу офлайн карт на SD накопителе -->
+    <string name="offline_dir"></string>
+    <string name="select_level">Select Levels</string>
+    <string name="download">Download</string>
+    <string name="switch_map">Switch Maps</string>
+    <string name="load_online_layer">LoadOnlineLayer</string>
 </resources>

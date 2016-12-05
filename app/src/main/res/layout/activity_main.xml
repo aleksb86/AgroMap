@@ -30,4 +30,32 @@
         android:layout_marginStart="18dp"
         android:layout_marginBottom="17dp"
         android:id="@+id/pathView" />
+
+    <Button
+        android:text="File W"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:id="@+id/write_file_btn"
+        android:elevation="0dp" />
+
+    <Button
+        android:text="check geodb file"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@+id/write_file_btn"
+        android:layout_toStartOf="@+id/write_file_btn"
+        android:id="@+id/check_geodb_file_btn" />
+
+    <Button
+        android:text="Tiled map"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@+id/check_geodb_file_btn"
+        android:layout_toStartOf="@+id/check_geodb_file_btn"
+        android:id="@+id/call_tiled_map_button" />
 </RelativeLayout>
