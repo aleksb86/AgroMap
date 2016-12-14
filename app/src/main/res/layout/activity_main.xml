@@ -1,61 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/activity_main"
+    android:id="@+id/activity_start"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
+    android:orientation="vertical"
     tools:context="com.at.agromap.MainActivity">
 
-    <com.esri.android.map.MapView
-        android:id="@+id/map"
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        mapoptions.MapType="Imagery"
-        mapoptions.center="34.056215, -117.195668"
-        mapoptions.ZoomLevel="16">
-    </com.esri.android.map.MapView>
+        android:layout_height="wrap_content"
+        android:minHeight="?attr/actionBarSize"
+        android:layout_marginBottom="4dp"
+        android:elevation="4dp">
+    </android.support.v7.widget.Toolbar>
 
     <TextView
-        android:text="TextView"
+        android:text=""
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
+        android:id="@+id/agro_logo"
+        android:textStyle="normal|bold"
+        android:textSize="18sp"
+        android:layout_marginBottom="63dp"
+        android:layout_centerInParent="true"/>
+
+    <Button
+        android:text="@string/map_demo_btn_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/offline_map_btn"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_below="@+id/toolbar"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginLeft="18dp"
-        android:layout_marginStart="18dp"
-        android:layout_marginBottom="17dp"
-        android:id="@+id/pathView" />
+        android:layout_alignParentStart="true" />
 
     <Button
-        android:text="File W"
-        android:layout_width="wrap_content"
+        android:text="Онлайн карта"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:id="@+id/write_file_btn"
-        android:elevation="0dp" />
+        android:id="@+id/online_map_btn"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_below="@+id/offline_map_btn"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
 
-    <Button
-        android:text="check geodb file"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_toLeftOf="@+id/write_file_btn"
-        android:layout_toStartOf="@+id/write_file_btn"
-        android:id="@+id/check_geodb_file_btn" />
-
-    <Button
-        android:text="Tiled map"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_toLeftOf="@+id/check_geodb_file_btn"
-        android:layout_toStartOf="@+id/check_geodb_file_btn"
-        android:id="@+id/call_tiled_map_button" />
 </RelativeLayout>

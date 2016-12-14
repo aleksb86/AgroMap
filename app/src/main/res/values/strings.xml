@@ -1,11 +1,49 @@
 <resources>
     <string name="app_name">Agro Map</string>
-    <!--<string name="basemap_service_url">http://agrp.agroterra.ru/gisportal/sharing/servers/bdb15dee71474e8f868450fbe527faec/rest/services/World_Street_Map/MapServer</string>-->
-    <string name="basemap_service_url">http://sampleserver6.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer</string>
-    <!-- TODO: надо добавить реальный путь к каталогу офлайн карт на SD накопителе -->
-    <string name="offline_dir"></string>
-    <string name="select_level">Select Levels</string>
-    <string name="download">Download</string>
-    <string name="switch_map">Switch Maps</string>
-    <string name="load_online_layer">LoadOnlineLayer</string>
+    <string name="basemap_service_url" translatable="false">http://sampleserver6.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer</string>
+    <!--Кнопки главного меню-->
+    <string name="select_level">Выбрать уровень детализации</string>
+    <string name="download">Загрузить фрагмент</string>
+    <string name="switch_map">Переключить карту</string>
+    <!--Текст логотипа агротерра на стартовом активити-->
+    <string name="logo_text" translatable="false">
+        <![CDATA[ <font color=#e6b800>АГРО</font><font color=#331a00>ТЕРРА</font>]]>
+    </string>
+    <string name="map_demo_btn_text">Открыть офлайн карту</string>
+    <!--Название каталога для базовых карт и баз геоданных-->
+    <!--<string name="geodb_file_name">/geodatabase_local.gdb</string>-->
+    <string name="tpk_basemap_file_name">/basemap_file.tpk</string>
+    <string name="offlinemap_files_dir">/OfflineMap</string>
+    <!--Индикатор загрузки-->
+    <string name="loading_text">Загрузка...</string>
+    <string name="loading_map_text">Инициализация карты...</string>
+    <string name="loading_layer_text">Загрузка слоя...</string>
+    <!-- Сообщение о невозможности загрузки карты -->
+    <string name="unable_map_load_dialog_title">Ошибка загрузки базовой карты</string>
+    <string name="unable_map_load_dialog_msg">Не обнаружен файл базовой карты, нет доступа к базовой карте онлайн!</string>
+    <!--уровни детализации базовой карты-->
+    <string-array name="level_items_name">
+        <item>Уровень 1</item>
+        <item>Уровень 2</item>
+        <item>Уровень 3</item>
+        <item>Уровень 4</item>
+        <item>Уровень 5</item>
+        <item>Уровень 6</item>
+        <item>Уровень 7</item>
+        <item>Уровень 8</item>
+        <item>Уровень 9</item>
+        <item>Уровень 10</item>
+    </string-array>
+    <string-array name="level_items_value">
+        <item>156543.03392800014</item>
+        <item>78271.51696399994</item>
+        <item>39135.75848200009</item>
+        <item>19567.87924099992</item>
+        <item>9783.93962049996</item>
+        <item>4891.96981024998</item>
+        <item>2445.98490512499</item>
+        <item>1222.992452562495</item>
+        <item>611.4962262813797</item>
+        <item>305.74811314055756</item>
+    </string-array>
 </resources>
