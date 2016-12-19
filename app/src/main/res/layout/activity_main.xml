@@ -36,14 +36,4 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
-    <Button
-        android:text="Онлайн карта"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/online_map_btn"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_below="@+id/offline_map_btn"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
-
 </RelativeLayout>

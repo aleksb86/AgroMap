@@ -29,4 +29,14 @@
         android:layout_below="@+id/map_demo_toolbar">
     </com.esri.android.map.MapView>
 
+    <Switch
+        android:text="@string/show_hide_layers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/map_demo_toolbar"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:id="@+id/switch_show_layers"
+        android:splitTrack="false" />
+
 </RelativeLayout>

@@ -1,20 +1,15 @@
 package com.at.agromap;
 
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.res.Resources;
 import android.media.MediaScannerConnection;
-import android.net.Uri;
 import android.os.Environment;
-import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,43 +28,49 @@ import com.esri.core.tasks.tilecache.ExportTileCacheStatus;
 import com.esri.core.tasks.tilecache.ExportTileCacheTask;
 
 import java.io.File;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.StringTokenizer;
 
 public class MapDemo extends AppCompatActivity {
 
     private MapView map;
     private File basePath;
-//    private String geodbFileName;
+    private String geodbFileName;
+    private String geodbFilesDir;
     private String basemapFileName;
-    private  String appDataStorageDir;
+    private String appDataStorageDir;
     private String tileUrl;
     private MenuItem selectLevels;
     private MenuItem download;
     private MenuItem switchMaps;
     private ProgressDialog mapLoadingProgress;
-//    private HashMap<String, Double>mapResolution;
     private CharSequence[] detailsLevelNames;
     private double[] detailLevelValues;
     private ArrayList<Double> levelsArraylist = new ArrayList<>();
-    // The generated tile cache will be a compact cache
-    private boolean createAsTilePackage = false;
+    // Вариант с компактным кешем оставим до лучших времен - будем использовать
+    // единый файл *.tpk
+    private boolean createAsTilePackage = true;
     private double[] levels;
     private ArcGISLocalTiledLayer localTiledLayer;
     private boolean[] itemsChecked;
     private Resources resources;
     private boolean isLocalLayerVisible;
+    private ArcGISTiledMapServiceLayer onlineBasemapLayer;
+    private String username; // Учетная запись для доступа к feature сервису
+    private String password; // это пароль
+    private GeodatabaseProc geodatabaseProc;
+    private String featureServiceUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         basePath = Environment.getExternalStorageDirectory();
-//        geodbFileName = getString(R.string.geodb_file_name);
+        geodbFilesDir = getString(R.string.geodb_files_dir);
+        geodbFileName = getString(R.string.geodb_file_name);
         basemapFileName = getString(R.string.tpk_basemap_file_name);
         appDataStorageDir = getString(R.string.offlinemap_files_dir);
         tileUrl = getString(R.string.basemap_service_url);
+        username = getString(R.string.username);
+        password = getString(R.string.password);
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_demo);
@@ -77,9 +78,83 @@ public class MapDemo extends AppCompatActivity {
         map = (MapView) findViewById(R.id.map);
         final Toolbar toolbar = (Toolbar) findViewById(R.id.map_demo_toolbar);
         setSupportActionBar(toolbar);
-        final ArcGISTiledMapServiceLayer onlineBasemapLayer = new ArcGISTiledMapServiceLayer(tileUrl);
+        onlineBasemapLayer = new ArcGISTiledMapServiceLayer(tileUrl);
         final TextView testPath = (TextView) findViewById(R.id.geodb_file_path);
         resources = getResources();
+
+        // ПРОВЕРКА ДОСТУПНОСТИ ВНЕШНЕГО НОСИТЕЛЯ
+        if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            // КАРТА SD НЕДОСТУПНА, ВСЕ ОСТАНАВЛИВАЕТСЯ
+            new AlertDialog.Builder(map.getContext())
+                    .setTitle(R.string.unable_to_write_sd_card_title)
+                    .setMessage(R.string.unable_to_write_sd_card)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setCancelable(false)
+                    .show();
+        } else {
+            // КАРТА SD ДОСТУПНА - ПРОДОЛЖАЕМ
+            // ПРОВЕРКА ВНЕШНЕГО КАТАЛОГА ПРИЛОЖЕНИЯ
+            if (!checkDirForAppFilesExists(basePath, File.separator + appDataStorageDir)) {
+                // ВНЕШНИЙ КАТАЛОГ НЕ СУЩЕСТВУЕТ - НАДО СОЗДАТЬ
+                if (createDirForAppFiles(basePath, File.separator + appDataStorageDir)) {
+                    // TODO: убрать при подготовке релиза!
+                    showToast("Каталог " + appDataStorageDir + " создан.");
+
+                } else {
+                    // НЕВОЗМОЖНО СОЗДАТЬ ВНЕШНИЙ КАТАЛОГ, ВСЕ ОСТАНАВЛИВАЕТСЯ
+                    new AlertDialog.Builder(map.getContext())
+                            .setTitle(R.string.error_creating_dir_dialog_title)
+                            .setMessage(R.string.unable_to_create_main_dir + appDataStorageDir)
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setCancelable(false)
+                            .show();
+                }
+            }
+            // ПРОВЕРКА КАТАЛОГА ДЛЯ БАЗЫ ГЕОДАННЫХ
+            if (!checkDirForAppFilesExists(basePath,
+                    File.separator + appDataStorageDir + File.separator + geodbFilesDir)) {
+                // КАТАЛОГ ДЛЯ БАЗЫ ГЕОДАННЫХ НЕ СУЩЕСТВУЕТ - НАДО СОЗДАТЬ
+                if (createDirForAppFiles(basePath,
+                        File.separator + appDataStorageDir +
+                                File.separator + geodbFilesDir)) {
+                    // TODO: убрать при подготовке релиза!
+                    showToast("Каталог " + geodbFilesDir + " создан.");
+                } else {
+                    // НЕВОЗМОЖНО СОЗДАТЬ КАТАЛОГ ДЛЯ БАЗЫ ГЕОДАННЫХ, ВСЕ ОСТАНАВЛИВАЕТСЯ
+                    new AlertDialog.Builder(map.getContext())
+                            .setTitle(R.string.error_creating_dir_dialog_title)
+                            .setMessage(R.string.unable_to_create_main_dir + geodbFilesDir)
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setCancelable(false)
+                            .show();
+                }
+            }
+            // ПОИСК ФАЙЛА БАЗОВОЙ КАРТЫ
+            File basemap = new File(basePath
+                    + File.separator + appDataStorageDir + File.separator + basemapFileName);
+            if (basemap.exists() && basemap.isFile()) {
+                // Это он, создаем из него слой
+                ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(basemap.toString());
+                map.addLayer(localBaseMap);
+                map.setScale(localBaseMap.getMinScale());
+                showToast(String.valueOf(localBaseMap.getMaxScale()));
+            } else {
+                // Файла нет - используется базовая карта онлайн
+                map.addLayer(onlineBasemapLayer);
+            }
+
+            // ПОИСК ФАЙЛОВ ЗАГРУЖЕННЫХ СЛОЕВ
+        }
+
+
+
+
+
+        // Объект для операций с feature service
+        geodatabaseProc = new GeodatabaseProc(map,
+                basePath.toString() + File.separator + appDataStorageDir + File.separator + geodbFileName,
+                testPath, username, password);
+        featureServiceUrl = getString(R.string.feature_service_url);
 
 //        mapLoadingProgress = new ProgressDialog(MapDemo.this);
 //        mapLoadingProgress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -132,42 +207,62 @@ public class MapDemo extends AppCompatActivity {
         });
 
         /*
-        Проверка доступности внешнего носителя (SD)
+        Проверка доступности внешнего носителя (SD) - old commented
          */
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            // Проверка существования каталога, в котором хранятся
-            // файл базы геоданных, файл TPK (базовая карта)
-            if (!checkDirForAppFilesExists(basePath, appDataStorageDir)) {
-                if (createDirForAppFiles(basePath, appDataStorageDir)) {
-                    MediaScannerConnection.scanFile(this,
-                            new String[] {
-                                    Environment
-                                            .getExternalStorageDirectory()
-                                            .toString() + appDataStorageDir
-                            },
-                            null, null);
-                    showToast("Каталог " + appDataStorageDir + " создан.");
-                } else {
-                    showToast("Невозможно создать каталог " + appDataStorageDir);
-                    // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
-                }
-            } else {
-                // Каталог есть - ищем файл базы геоданных
-                if (checkGdbFileExists(basePath, appDataStorageDir)) {// + basemapFileName)) {
-                    // TODO: если файл присутствует, то нужно использовать его
-                    ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(Environment.getExternalStorageDirectory().toString() + appDataStorageDir);// + basemapFileName);
-                    map.addLayer(localBaseMap);
-                } else {
-                    // Если файла базовой карты нет, то пытаемся отобразить онлайновую
-                    // базовую карту, полученную через Map сервис
-                    map.addLayer(onlineBasemapLayer);
-                    map.centerAt(51.756880, 36.134419, true);
-                }
-            }
-        } else {
-            showToast("Карта памяти не установлена/не подключена/не отвечает!");
-            // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
-        }
+//        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+//            // Проверка существования каталога, в котором хранятся
+//            // файл базы геоданных, файл TPK (базовая карта)
+//            if (!checkDirForAppFilesExists(basePath, File.separator + appDataStorageDir)) {
+//                if (createDirForAppFiles(basePath, File.separator + appDataStorageDir)) {
+//                    MediaScannerConnection.scanFile(this,
+//                            new String[] {
+//                                    Environment
+//                                            .getExternalStorageDirectory()
+//                                            .toString() + File.separator + appDataStorageDir
+//                            },
+//                            null, null);
+//                    showToast("Каталог " + appDataStorageDir + " создан.");
+//                } else {
+//                    showToast("Невозможно создать каталог " + appDataStorageDir);
+//                    // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
+//                }
+//            } else {
+//                // Каталог существует, может пустой?
+//                if (checkIsEmptyDirForAppFiles(basePath, File.separator + appDataStorageDir)) {
+//                    // empty
+//                    map.addLayer(onlineBasemapLayer);
+//                } else {
+//                    // not empty
+//                    // Файл базовой карты?
+//                    File basemap = new File(basePath + File.separator + appDataStorageDir + File.separator + basemapFileName);
+//                    if (basemap.exists() && basemap.isFile()) {
+//                        // Это он, создаем из него слой
+//                        ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(basemap.toString());
+//                        map.addLayer(localBaseMap);
+//                        map.setScale(localBaseMap.getMinScale());
+//                        showToast(String.valueOf(localBaseMap.getMaxScale()));
+//                    } else {
+//                        // Может папка с компактным кэшем?
+////                        showToast(basePath.toString() + appDataStorageDir);
+//                        ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(basePath.toString() + File.separator + appDataStorageDir);
+//                        map.addLayer(localBaseMap);
+//                    }
+//                }
+//                // Каталог есть - ищем файл базы геоданных
+////                if (checkFileExists(basePath, appDataStorageDir + geodbFileName)) {
+////                    // TODO: если файл присутствует, то нужно использовать его
+////
+////                } else {
+////                    // Если файла базовой карты нет, то пытаемся отобразить онлайновую
+////                    // базовую карту, полученную через Map сервис
+////                    map.addLayer(onlineBasemapLayer);
+////                    map.centerAt(51.756880, 36.134419, true);
+////                }
+//            }
+//        } else {
+//            showToast("Карта памяти не установлена/не подключена/не отвечает!");
+//            // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
+//        }
     }
 
     /*
@@ -201,6 +296,8 @@ public class MapDemo extends AppCompatActivity {
 //                    switchToLocalLayer();
 //                }
                 return true;
+            case R.id.download_layers:
+                geodatabaseProc.downloadData(featureServiceUrl);
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -215,7 +312,7 @@ public class MapDemo extends AppCompatActivity {
         boolean[] uncheckedItems = new boolean[detailsLevelNames.length];
         Arrays.fill(uncheckedItems, false);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Select the Levels of Detail");
+        builder.setTitle("Выберите уровни детализации карты:");
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 
             @Override
@@ -223,13 +320,15 @@ public class MapDemo extends AppCompatActivity {
                 // When ok button is pressed, we go through the array of
                 // itemsChecked and add the selected
                 // items to levelsArraylist
-                for (int i = 0; i < detailLevelValues.length; i++) {
+                for (int i = 0; i < detailsLevelNames.length; i++) {
                     if (itemsChecked[i]) {
 
                         levelsArraylist.add((double) i);
                         itemsChecked[i] = false;
                     }
                 }
+
+                showToast("selected " + levelsArraylist.size());
             }
         });
 
@@ -248,7 +347,7 @@ public class MapDemo extends AppCompatActivity {
     // создать локальный кэш из данных Map сервиса
     private void downloadBasemap() {
         Envelope extentForTPK = new Envelope();
-        final String tileCachePath = Environment.getExternalStorageDirectory().toString() + appDataStorageDir;// + basemapFileName;
+        final String tileCachePath = Environment.getExternalStorageDirectory().toString() + File.separator + appDataStorageDir + File.separator + basemapFileName;
         map.getExtent().queryEnvelope(extentForTPK);
 
         // If the user does not select the Level of details
@@ -401,15 +500,20 @@ public class MapDemo extends AppCompatActivity {
     }
 
     private void switchMapToLayer() {
-        map.setResolution(detailLevelValues[(int) levels[0]]);
-        if (isLocalLayerVisible) {
-            isLocalLayerVisible = false;
-            map.getLayer(0).setVisible(false);
-            map.getLayer(1).setVisible(true);
+        if (map.getLayers().length <= 1) {
+            map.addLayer(onlineBasemapLayer);
         } else {
-            isLocalLayerVisible = true;
-            map.getLayer(0).setVisible(true);
-            map.getLayer(1).setVisible(false);
+//            map.setResolution(detailLevelValues[(int) levels[0]]);
+//            map.setMinScale(detailLevelValues[(int) levels[0]]);
+            if (isLocalLayerVisible) {
+                isLocalLayerVisible = false;
+                map.getLayer(0).setVisible(false);
+                map.getLayer(1).setVisible(true);
+            } else {
+                isLocalLayerVisible = true;
+                map.getLayer(0).setVisible(true);
+                map.getLayer(1).setVisible(false);
+            }
         }
     }
 
@@ -418,7 +522,7 @@ public class MapDemo extends AppCompatActivity {
         return dir.exists() && dir.isDirectory();
     }
 
-    private boolean checkGdbFileExists(File base, String relPath) {
+    private boolean checkFileExists(File base, String relPath) {
         File file = new File(base, relPath);
         return file.exists() && file.isFile();
     }
@@ -426,6 +530,12 @@ public class MapDemo extends AppCompatActivity {
     private boolean createDirForAppFiles(File base, String dirName) {
         File dir = new File(base, dirName);
         return dir.mkdir();
+    }
+
+    private boolean checkIsEmptyDirForAppFiles(File base, String dirName) {
+        File dir = new File(base, dirName);
+        File[] contents = dir.listFiles();
+        return contents.length == 0;
     }
 
     private void showToast(String msgText) {

@@ -19,12 +19,11 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        Button openOnlineMap = (Button) findViewById(R.id.online_map_btn);
+//        Button openOnlineMap = (Button) findViewById(R.id.online_map_btn);
         Button openOfflineMap = (Button) findViewById(R.id.offline_map_btn);
         TextView logo = (TextView) findViewById(R.id.agro_logo);
 
-        final Intent intentOnlineMap = new Intent(MainActivity.this, OnlineMapActivity.class);
-//        final Intent intentOfflineMap = new Intent(MainActivity.this, TailedMapActivity.class);
+//        final Intent intentOnlineMap = new Intent(MainActivity.this, OnlineMapActivity.class);
         final Intent intentOfflineMap = new Intent(MainActivity.this, MapDemo.class);
 
         // Проверка версии сборки для использования fromHtml()
@@ -35,11 +34,11 @@ public class MainActivity extends AppCompatActivity {
             logo.setText(Html.fromHtml(getString(R.string.logo_text)));
         }
 
-        openOnlineMap.setOnClickListener(new View.OnClickListener() {
-            public  void onClick(View v) {
-                MainActivity.this.startActivity(intentOnlineMap);
-            }
-        });
+//        openOnlineMap.setOnClickListener(new View.OnClickListener() {
+//            public  void onClick(View v) {
+//                MainActivity.this.startActivity(intentOnlineMap);
+//            }
+//        });
 
         openOfflineMap.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
