@@ -3,40 +3,73 @@ package com.at.agromap;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.res.Resources;
+import android.graphics.drawable.Icon;
 import android.media.MediaScannerConnection;
+import android.net.Credentials;
+import android.os.AsyncTask;
 import android.os.Environment;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutCompat;
 import android.support.v7.widget.Toolbar;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.esri.android.map.Callout;
+import com.esri.android.map.FeatureLayer;
 import com.esri.android.map.MapView;
 import com.esri.android.map.ags.ArcGISLocalTiledLayer;
 import com.esri.android.map.ags.ArcGISTiledMapServiceLayer;
+import com.esri.android.map.event.OnSingleTapListener;
 import com.esri.android.map.event.OnStatusChangedListener;
+import com.esri.core.ags.FeatureServiceInfo;
+import com.esri.core.geodatabase.Geodatabase;
+import com.esri.core.geodatabase.GeodatabaseFeatureTable;
 import com.esri.core.geometry.Envelope;
+import com.esri.core.geometry.Geometry;
+import com.esri.core.geometry.Point;
+import com.esri.core.io.UserCredentials;
 import com.esri.core.map.CallbackListener;
+import com.esri.core.map.Feature;
+import com.esri.core.map.FeatureResult;
+import com.esri.core.tasks.geodatabase.GenerateGeodatabaseParameters;
+import com.esri.core.tasks.geodatabase.GeodatabaseStatusCallback;
+import com.esri.core.tasks.geodatabase.GeodatabaseStatusInfo;
+import com.esri.core.tasks.geodatabase.GeodatabaseSyncTask;
+import com.esri.core.tasks.query.QueryParameters;
 import com.esri.core.tasks.tilecache.ExportTileCacheParameters;
 import com.esri.core.tasks.tilecache.ExportTileCacheParameters.ExportBy;
 import com.esri.core.tasks.tilecache.ExportTileCacheStatus;
 import com.esri.core.tasks.tilecache.ExportTileCacheTask;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.Future;
 
 public class MapDemo extends AppCompatActivity {
 
     private MapView map;
     private File basePath;
-    private String geodbFileName;
     private String geodbFilesDir;
+    private String geodbFileName;
     private String basemapFileName;
     private String appDataStorageDir;
     private String tileUrl;
@@ -58,8 +91,14 @@ public class MapDemo extends AppCompatActivity {
     private ArcGISTiledMapServiceLayer onlineBasemapLayer;
     private String username; // Учетная запись для доступа к feature сервису
     private String password; // это пароль
-    private GeodatabaseProc geodatabaseProc;
     private String featureServiceUrl;
+    private ProgressDialog featureloadingDialog;
+    private GeodatabaseSyncTask geodatabaseSyncTask;
+    // Объекты для запросов к локальной базе геоданных
+    private Geodatabase localGeodatabase;
+    private GeodatabaseFeatureTable currentFeatureTable;
+//    private FeatureResult featureResult;
+    private Map<String, Object> featuresMapResult;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +110,7 @@ public class MapDemo extends AppCompatActivity {
         tileUrl = getString(R.string.basemap_service_url);
         username = getString(R.string.username);
         password = getString(R.string.password);
+        featureServiceUrl = getString(R.string.feature_service_url);
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_demo);
@@ -143,18 +183,18 @@ public class MapDemo extends AppCompatActivity {
                 map.addLayer(onlineBasemapLayer);
             }
 
-            // ПОИСК ФАЙЛОВ ЗАГРУЖЕННЫХ СЛОЕВ
+            // ОТОБРАЖЕНИЕ ЗАГРУЖЕННЫХ АТРИБУТИВНЫХ СЛОЕВ
+            updateFeatureLayer(basePath
+                    + File.separator + appDataStorageDir
+                    + File.separator + geodbFilesDir
+                    + File.separator + geodbFileName);
+            currentFeatureTable = localGeodatabase.getGeodatabaseFeatureTableByLayerId(0);
         }
 
 
 
 
 
-        // Объект для операций с feature service
-        geodatabaseProc = new GeodatabaseProc(map,
-                basePath.toString() + File.separator + appDataStorageDir + File.separator + geodbFileName,
-                testPath, username, password);
-        featureServiceUrl = getString(R.string.feature_service_url);
 
 //        mapLoadingProgress = new ProgressDialog(MapDemo.this);
 //        mapLoadingProgress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -207,66 +247,41 @@ public class MapDemo extends AppCompatActivity {
         });
 
         /*
-        Проверка доступности внешнего носителя (SD) - old commented
+        ОБРАБОТЧИК ОДНОКРАТНОГО НАЖАТИЯ ДЛЯ КАРТЫ
          */
-//        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-//            // Проверка существования каталога, в котором хранятся
-//            // файл базы геоданных, файл TPK (базовая карта)
-//            if (!checkDirForAppFilesExists(basePath, File.separator + appDataStorageDir)) {
-//                if (createDirForAppFiles(basePath, File.separator + appDataStorageDir)) {
-//                    MediaScannerConnection.scanFile(this,
-//                            new String[] {
-//                                    Environment
-//                                            .getExternalStorageDirectory()
-//                                            .toString() + File.separator + appDataStorageDir
-//                            },
-//                            null, null);
-//                    showToast("Каталог " + appDataStorageDir + " создан.");
-//                } else {
-//                    showToast("Невозможно создать каталог " + appDataStorageDir);
-//                    // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
-//                }
-//            } else {
-//                // Каталог существует, может пустой?
-//                if (checkIsEmptyDirForAppFiles(basePath, File.separator + appDataStorageDir)) {
-//                    // empty
-//                    map.addLayer(onlineBasemapLayer);
-//                } else {
-//                    // not empty
-//                    // Файл базовой карты?
-//                    File basemap = new File(basePath + File.separator + appDataStorageDir + File.separator + basemapFileName);
-//                    if (basemap.exists() && basemap.isFile()) {
-//                        // Это он, создаем из него слой
-//                        ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(basemap.toString());
-//                        map.addLayer(localBaseMap);
-//                        map.setScale(localBaseMap.getMinScale());
-//                        showToast(String.valueOf(localBaseMap.getMaxScale()));
-//                    } else {
-//                        // Может папка с компактным кэшем?
-////                        showToast(basePath.toString() + appDataStorageDir);
-//                        ArcGISLocalTiledLayer localBaseMap = new ArcGISLocalTiledLayer(basePath.toString() + File.separator + appDataStorageDir);
-//                        map.addLayer(localBaseMap);
-//                    }
-//                }
-//                // Каталог есть - ищем файл базы геоданных
-////                if (checkFileExists(basePath, appDataStorageDir + geodbFileName)) {
-////                    // TODO: если файл присутствует, то нужно использовать его
-////
-////                } else {
-////                    // Если файла базовой карты нет, то пытаемся отобразить онлайновую
-////                    // базовую карту, полученную через Map сервис
-////                    map.addLayer(onlineBasemapLayer);
-////                    map.centerAt(51.756880, 36.134419, true);
-////                }
-//            }
-//        } else {
-//            showToast("Карта памяти не установлена/не подключена/не отвечает!");
-//            // TODO: здесь все должно остановиться, т.к. нет ресурсов - нет обработки
-//        }
+        map.setOnSingleTapListener(new OnSingleTapListener() {
+            @Override
+            public void onSingleTap(final float x, final float y) {
+                if (!map.isLoaded()) {
+                    return;
+                }
+                showToast("X: " + x + " Y: " + y);
+                Point point = map.toMapPoint(x, y);
+                queryFeature(setQueryParams(point));
+//                showToast("Features: " + featuresMapResult);
+            }
+        });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        map.pause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        map.unpause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 
     /*
-    Основное меню. Действия с картой и слоями
+    ОСНОВНОЕ МЕНЮ. ДЕЙСТВИЯ С КАРТОЙ И СЛОЯМИ
      */
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
@@ -276,10 +291,12 @@ public class MapDemo extends AppCompatActivity {
 //        selectLevels.setIcon(android.R.drawable.ic_menu_crop);
         download = menu.getItem(1);
         switchMaps = menu.getItem(2);
-
         return super.onCreateOptionsMenu(menu);
     }
 
+    /*
+    НАСТРОЙКА ДЕЙСТВИЙ ДЛЯ ПУНКТОВ МЕНЮ
+     */
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.select_levels:
@@ -297,7 +314,7 @@ public class MapDemo extends AppCompatActivity {
 //                }
                 return true;
             case R.id.download_layers:
-                geodatabaseProc.downloadData(featureServiceUrl);
+                downloadFeatureLayers();
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -308,7 +325,6 @@ public class MapDemo extends AppCompatActivity {
     который нужен в качестве параметра для задания кэширования карты.
      */
     public void showDialog() {
-
         boolean[] uncheckedItems = new boolean[detailsLevelNames.length];
         Arrays.fill(uncheckedItems, false);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -322,7 +338,6 @@ public class MapDemo extends AppCompatActivity {
                 // items to levelsArraylist
                 for (int i = 0; i < detailsLevelNames.length; i++) {
                     if (itemsChecked[i]) {
-
                         levelsArraylist.add((double) i);
                         itemsChecked[i] = false;
                     }
@@ -344,10 +359,16 @@ public class MapDemo extends AppCompatActivity {
         builder.show();
     }
 
+    /***********************************************************************************************
+     * ЗАГРУЗКА КЭША БАЗОВОЙ КАРТЫ
+     * *********************************************************************************************
+     */
+
     // создать локальный кэш из данных Map сервиса
     private void downloadBasemap() {
         Envelope extentForTPK = new Envelope();
-        final String tileCachePath = Environment.getExternalStorageDirectory().toString() + File.separator + appDataStorageDir + File.separator + basemapFileName;
+        final String tileCachePath = Environment.getExternalStorageDirectory().toString()
+                + File.separator + appDataStorageDir + File.separator + basemapFileName;
         map.getExtent().queryEnvelope(extentForTPK);
 
         // If the user does not select the Level of details
@@ -438,7 +459,6 @@ public class MapDemo extends AppCompatActivity {
 //                                Toast.LENGTH_SHORT).show();
                     }
                 });
-
             }
         };
 
@@ -476,7 +496,6 @@ public class MapDemo extends AppCompatActivity {
                         if (!errored) {
                             Log.d("the Download Path = ", "" + path);
 
-
                             // switch to the successfully downloaded local layer
                             localTiledLayer = new ArcGISLocalTiledLayer(path);
                             map.addLayer(localTiledLayer);
@@ -499,6 +518,256 @@ public class MapDemo extends AppCompatActivity {
                 }, tileCachePath);
     }
 
+    /***********************************************************************************************
+     * ЗАГРУЗКА СЛОЕВ
+     * *********************************************************************************************
+     */
+
+    // ПОДГОТОВКА К ЗАГРУЗКЕ СЛОЕВ (FEATURE SERVICE)
+    void downloadFeatureLayers() {
+        featureloadingDialog = ProgressDialog.show(map.getContext(),
+                "Загрузка слоев", "Получение данных..");
+        featureloadingDialog.show();
+        UserCredentials credentials = new UserCredentials();
+        credentials.setUserAccount(username, password);
+        geodatabaseSyncTask = new GeodatabaseSyncTask(featureServiceUrl, credentials);
+        geodatabaseSyncTask.fetchFeatureServiceInfo(new CallbackListener<FeatureServiceInfo>() {
+
+            @Override
+            public void onError(Throwable e) {
+                Log.e("GDB", "Error fetching FeatureServiceInfo " + e.getMessage());
+            }
+
+            @Override
+            public void onCallback(FeatureServiceInfo fsInfo) {
+                if (fsInfo.isSyncEnabled()) {
+                    createGeodatabase(fsInfo);
+                }
+            }
+        });
+    }
+
+    // СОЗДАНИЕ БАЗЫ ГЕОДАННЫХ
+    private void createGeodatabase(FeatureServiceInfo featureServerInfo) {
+        // НАСТРОЙКА ПАРАМЕТРОВ ДЛЯ ГЕНЕРАЦИИ БАЗЫ
+        GenerateGeodatabaseParameters params =
+                new GenerateGeodatabaseParameters(featureServerInfo, map.getExtent(),
+                map.getSpatialReference());
+
+        // КОЛЛБЕК СРАБАТЫВАЕТ, КОГДА ЗАДАНИЕ ВЫПОЛНЯЕТСЯ ИЛИ ПАДАЕТ С ОШИБКОЙ
+        CallbackListener<String> gdbResponseCallback = new CallbackListener<String>() {
+            @Override
+            public void onError(final Throwable e) {
+                Log.e("GDB", "Error creating geodatabase" + e.getMessage());
+                featureloadingDialog.dismiss();
+            }
+
+            @Override
+            public void onCallback(String path) {
+                Log.i("GDB", "Geodatabase is: " + path);
+                featureloadingDialog.dismiss();
+                // update map with local feature layer from geodatabase
+                updateFeatureLayer(path);
+            }
+        };
+
+        // КОЛЛБЕК СРАБАТЫВАЕТ ПРИ ИЗМЕНЕНИИ СТАТУСА ЗАДАНИЯ
+        GeodatabaseStatusCallback statusCallback = new GeodatabaseStatusCallback() {
+            @Override
+            public void statusUpdated(GeodatabaseStatusInfo status) {
+                Log.i("GDB", status.getStatus().toString());
+            }
+        };
+
+        File oldGeodatabase = new File(basePath,
+                        File.separator + appDataStorageDir +
+                        File.separator + geodbFilesDir +
+                        File.separator + geodbFileName);
+        // *-shm и *-val - это доп. файлы, создаваемые движком SQLite
+        File oldGeodatabaseShm = new File(basePath,
+                        File.separator + appDataStorageDir +
+                        File.separator + geodbFilesDir +
+                        File.separator + geodbFileName + "-shm");
+        File oldGeodatabaseVal = new File(basePath,
+                        File.separator + appDataStorageDir +
+                        File.separator + geodbFilesDir +
+                        File.separator + geodbFileName + "-val");
+        try {
+            oldGeodatabase.delete();
+            oldGeodatabaseShm.delete();
+            oldGeodatabaseVal.delete();
+        } catch (Exception e) {
+            Log.e("GDB", "Delete old files error: " + e.getMessage());
+        }
+
+
+        // ЗАПУСК СОЗДАНИЯ БАЗЫ С НАСТРОЕННЫМИ ПАРАМЕТРАМИ
+        submitTask(params,
+                basePath.toString() +
+                        File.separator + appDataStorageDir +
+                        File.separator + geodbFilesDir +
+                        File.separator + geodbFileName,
+                statusCallback, gdbResponseCallback);
+    }
+
+    // МЕТОД ДЛЯ ЗАПУСКА ЗАДАЧИ СОЗДАНИЯ БАЗЫ ГЕОДАННЫХ
+    private void submitTask(GenerateGeodatabaseParameters params, String file,
+                                   GeodatabaseStatusCallback statusCallback,
+                                   CallbackListener<String> gdbResponseCallback) {
+
+        geodatabaseSyncTask.generateGeodatabase(params, file, false, statusCallback,
+                gdbResponseCallback);
+    }
+
+    // ПРИМЕНЕНИЕ ЛОКАЛЬНЫХ АТРИБУТИВНЫХ СЛОЕВ
+    // (ЕСЛИ ОНИ УЖЕ ЗАГРУЖЕНЫ)
+    private void updateFeatureLayer(String featureLayerPath) {
+// create a new geodatabase
+//        Geodatabase localGdb = null;
+        try {
+            localGeodatabase = new Geodatabase(featureLayerPath);
+        } catch (FileNotFoundException e) {
+            Log.e("GDB", "Local geodatabase file not found!");
+        }
+
+// Geodatabase contains GdbFeatureTables representing attribute data
+// and/or spatial data. If GdbFeatureTable has geometry add it to
+// the MapView as a Feature Layer
+        if (localGeodatabase != null) {
+            for (GeodatabaseFeatureTable gdbFeatureTable : localGeodatabase.getGeodatabaseTables()) {
+                if (gdbFeatureTable.hasGeometry())
+                    map.addLayer(new FeatureLayer(gdbFeatureTable));
+            }
+        }
+    }
+
+    /***********************************************************************************************
+     * ИДЕНТИФИКАЦИЯ ОБЪЕКТОВ
+     * *********************************************************************************************
+     */
+    // ЗАПРОС АТРИБУТОВ И ВЫВОД ВСПЛЫВАЮЩИХ СООБЩЕНИЙ НА КАРТЕ
+//    private class AttributeAsyncTask extends AsyncTask<Void, Void, Void> {
+//
+//        @Override
+//        protected void onPreExecute() {
+//
+//        }
+//
+//        @Override
+//        protected Void doInBackground(Void... args) {
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(Void arg) {
+//
+//        }
+//
+//        @Override
+//        protected void onProgressUpdate(Void... arg) {
+//
+//        }
+//    }
+
+    private ViewGroup createFeatureLayout(final Map<String, Object> results) {
+
+        // create a new LinearLayout in application context
+        LinearLayout layout = new LinearLayout(this);
+
+        // view height and widthwrap content
+        layout.setLayoutParams(new LinearLayoutCompat.LayoutParams(
+                LinearLayoutCompat.LayoutParams.WRAP_CONTENT,
+                LinearLayoutCompat.LayoutParams.WRAP_CONTENT));
+
+        // default orientation
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        TextView name = new TextView(this);
+        name.setText("Наименование: " + results.get("name"));
+
+        TextView culture = new TextView(this);
+        culture.setText("Культура: " + results.get("usage_type"));
+
+        TextView created = new TextView(this);
+        created.setText("Дата создания" + results.get("created_date"));
+
+        FloatingActionButton closeBtn = new FloatingActionButton(this);
+        closeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                view.
+            }
+        });
+//        closeBtn.setBackground(R.drawable.ic_menu_close_clear_cancel);
+
+        layout.addView(name);
+        layout.addView(culture);
+        layout.addView(created);
+
+        return layout;
+    }
+
+    // ПОДГОТОВКА ПАРАМЕТРОВ ДЛЯ ЗАПРОСА К АТРИБУТИВНОЙ ТАБЛИЦЕ СЛОЯ
+    private QueryParameters setQueryParams(Point tappedPoint) {
+        QueryParameters parameters = new QueryParameters();
+        parameters.setGeometry(tappedPoint);
+        parameters.setInSpatialReference(map.getSpatialReference());
+        parameters.setReturnGeometry(false);
+        return parameters;
+    }
+
+    // ЗАПРОС К АТРИБУТИВНОЙ ТАБЛИЦЕ СЛОЯ
+    private void queryFeature(final QueryParameters params) {
+
+        CallbackListener<FeatureResult> featureResultCallbackListener =
+                new CallbackListener<FeatureResult>() {
+            @Override
+            public void onCallback(FeatureResult objects) {
+                Log.d("IDN", "Success identify. Number of features: " + objects.featureCount());
+                if (objects.featureCount() == 1) {
+                    for (Object obj : objects) {
+                        if (obj instanceof Feature) {
+                            featuresMapResult = ((Feature) obj).getAttributes();
+
+                            Callout callout = map.getCallout();
+                            callout.setContent(createFeatureLayout(featuresMapResult));
+                            callout.show((Point) params.getGeometry());
+
+//                        Log.d("IDN", "Success identify: " + ((Feature) obj).getAttributes());
+                            Log.d("IDN", "Created : "
+                                    + getDate( (long) ((Feature) obj).getAttributes().get("created_date") ));
+                            Log.d("IDN", "Culture : "
+                                    + ((Feature) obj).getAttributes().get("usage_type"));
+                            Log.d("IDN", "Name : "
+                                    + ((Feature) obj).getAttributes().get("name"));
+                        } else {
+                            Log.e("IDN", "Объект в FeatureResult не относится к типу Feature!");
+                        }
+                    }
+                } else if (objects.featureCount() > 1) {
+                    Log.e("IDN", "FeatureResult содержит более одного объекта!");
+                    featuresMapResult = null;
+                } else {
+                    Log.e("IDN", "FeatureResult не содержит ни одного объекта!");
+                    featuresMapResult = null;
+                }
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.e("IDN", "Error with identify: " + e.getMessage());
+            }
+        };
+
+        currentFeatureTable.queryFeatures(params, featureResultCallbackListener);
+    }
+
+
+    /***********************************************************************************************
+     * MISCELLANEOUS
+     * *********************************************************************************************
+     */
+    // МЕТОД ДЛЯ ПЕРЕКЛЮЧЕНИЯ ПОДЛОЖКИ (ОНЛАЙН/ОФЛАЙН)
     private void switchMapToLayer() {
         if (map.getLayers().length <= 1) {
             map.addLayer(onlineBasemapLayer);
@@ -544,20 +813,13 @@ public class MapDemo extends AppCompatActivity {
         ).show();
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        map.pause();
+    // Преобразование даты Timestamp -> локализованная дата
+    private String getDate(long time) {
+        Calendar cal = Calendar.getInstance(new Locale("RU"));
+        cal.setTimeInMillis(time);
+        String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+        return date;
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        map.unpause();
-    }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
 }
