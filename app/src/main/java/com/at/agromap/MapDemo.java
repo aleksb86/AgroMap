@@ -3,6 +3,7 @@ package com.at.agromap;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.media.MediaScannerConnection;
 import android.net.Credentials;
@@ -29,6 +30,7 @@ import android.widget.Toast;
 
 import com.esri.android.map.Callout;
 import com.esri.android.map.FeatureLayer;
+import com.esri.android.map.GraphicsLayer;
 import com.esri.android.map.MapView;
 import com.esri.android.map.ags.ArcGISLocalTiledLayer;
 import com.esri.android.map.ags.ArcGISTiledMapServiceLayer;
@@ -44,6 +46,10 @@ import com.esri.core.io.UserCredentials;
 import com.esri.core.map.CallbackListener;
 import com.esri.core.map.Feature;
 import com.esri.core.map.FeatureResult;
+import com.esri.core.map.Graphic;
+import com.esri.core.symbol.SimpleFillSymbol;
+import com.esri.core.symbol.SimpleLineSymbol;
+import com.esri.core.symbol.SimpleMarkerSymbol;
 import com.esri.core.tasks.geodatabase.GenerateGeodatabaseParameters;
 import com.esri.core.tasks.geodatabase.GeodatabaseStatusCallback;
 import com.esri.core.tasks.geodatabase.GeodatabaseStatusInfo;
@@ -62,7 +68,10 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Future;
+
+import static java.lang.Math.toIntExact;
 
 public class MapDemo extends AppCompatActivity {
 
@@ -99,6 +108,8 @@ public class MapDemo extends AppCompatActivity {
     private GeodatabaseFeatureTable currentFeatureTable;
 //    private FeatureResult featureResult;
     private Map<String, Object> featuresMapResult;
+    private GraphicsLayer graphicsLayer;
+    private Graphic[] highlightGraphics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -189,6 +200,8 @@ public class MapDemo extends AppCompatActivity {
                     + File.separator + geodbFilesDir
                     + File.separator + geodbFileName);
             currentFeatureTable = localGeodatabase.getGeodatabaseFeatureTableByLayerId(0);
+            graphicsLayer = new GraphicsLayer();
+            map.addLayer(graphicsLayer);
         }
 
 
@@ -668,7 +681,8 @@ public class MapDemo extends AppCompatActivity {
 //
 //        }
 //    }
-
+    // Формирование окна, всплывающего над точкой идентификации
+    // на карте. Окно содержит данные идентифицируемого объекта
     private ViewGroup createFeatureLayout(final Map<String, Object> results) {
 
         // create a new LinearLayout in application context
@@ -725,30 +739,69 @@ public class MapDemo extends AppCompatActivity {
             public void onCallback(FeatureResult objects) {
                 Log.d("IDN", "Success identify. Number of features: " + objects.featureCount());
                 if (objects.featureCount() == 1) {
+                    int i = 0;
                     for (Object obj : objects) {
                         if (obj instanceof Feature) {
                             featuresMapResult = ((Feature) obj).getAttributes();
 
+                            // Отображение всплывающего над объектом окна
                             Callout callout = map.getCallout();
                             callout.setContent(createFeatureLayout(featuresMapResult));
                             callout.show((Point) params.getGeometry());
 
-//                        Log.d("IDN", "Success identify: " + ((Feature) obj).getAttributes());
-                            Log.d("IDN", "Created : "
-                                    + getDate( (long) ((Feature) obj).getAttributes().get("created_date") ));
-                            Log.d("IDN", "Culture : "
-                                    + ((Feature) obj).getAttributes().get("usage_type"));
-                            Log.d("IDN", "Name : "
-                                    + ((Feature) obj).getAttributes().get("name"));
+                            // Подсветка идентифицируемого объекта
+                            Geometry geom = ((Feature) obj).getGeometry();
+                            String typeName = geom.getType().name();
+                            int color = Color.rgb(255, 63,63);
+                            long objCount = objects.featureCount();
+
+                            highlightGraphics = new Graphic[(int) (long) objCount];
+                            // Create appropriate symbol, based on geometry type
+                            if (typeName.equalsIgnoreCase("point")) {
+                                SimpleMarkerSymbol sms = new SimpleMarkerSymbol(
+                                        color, 20, SimpleMarkerSymbol.STYLE.SQUARE);
+                                highlightGraphics[i] = new Graphic(geom, sms);
+                                Log.d("IDN", "highligted as - " + typeName);
+
+                            } else if (typeName.equalsIgnoreCase("polyline")) {
+                                SimpleLineSymbol sls = new SimpleLineSymbol(color,
+                                        5, SimpleLineSymbol.STYLE.DOT);
+                                highlightGraphics[i] = new Graphic(geom, sls);
+                                Log.d("IDN", "highligted as - " + typeName);
+
+                            } else if (typeName.equalsIgnoreCase("polygon")) {
+                                try {
+                                    SimpleFillSymbol sfs = new SimpleFillSymbol(color);
+                                    sfs.setAlpha(75);
+                                    highlightGraphics[i] = new Graphic(geom, sfs);
+                                    Log.d("IDN", "highligted as - " + typeName);
+                                } catch (Exception e) {
+                                    Log.d("IDN", "error! " + e.getMessage());
+                                }
+
+                            } else {
+                                Log.d("IDN", "ни одно условие не сработало =(");
+                            }
+
+                            graphicsLayer.addGraphic(highlightGraphics[i]);
+
+                            i++;
+
+//                            Log.d("IDN", "Created : "
+//                                    + getDate( (long) ((Feature) obj).getAttributes().get("created_date") ));
+//                            Log.d("IDN", "Culture : "
+//                                    + ((Feature) obj).getAttributes().get("usage_type"));
+//                            Log.d("IDN", "Name : "
+//                                    + ((Feature) obj).getAttributes().get("name"));
                         } else {
-                            Log.e("IDN", "Объект в FeatureResult не относится к типу Feature!");
+                            Log.d("IDN", "Объект в FeatureResult не относится к типу Feature!");
                         }
                     }
                 } else if (objects.featureCount() > 1) {
-                    Log.e("IDN", "FeatureResult содержит более одного объекта!");
+                    Log.d("IDN", "FeatureResult содержит более одного объекта!");
                     featuresMapResult = null;
                 } else {
-                    Log.e("IDN", "FeatureResult не содержит ни одного объекта!");
+                    Log.d("IDN", "FeatureResult не содержит ни одного объекта!");
                     featuresMapResult = null;
                 }
             }
