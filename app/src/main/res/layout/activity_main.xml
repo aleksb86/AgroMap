@@ -12,19 +12,24 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:minHeight="?attr/actionBarSize"
-        android:layout_marginBottom="4dp"
-        android:elevation="4dp">
+        android:layout_marginBottom="4dp">
+
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/spinner" />
+
+        <TextView
+            android:text=""
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/agro_logo"
+            android:textStyle="normal|bold"
+            android:textSize="18sp" />
+
     </android.support.v7.widget.Toolbar>
 
-    <TextView
-        android:text=""
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/agro_logo"
-        android:textStyle="normal|bold"
-        android:textSize="18sp"
-        android:layout_marginBottom="63dp"
-        android:layout_centerInParent="true"/>
+
 
     <Button
         android:text="@string/map_demo_btn_text"
@@ -35,5 +40,17 @@
         android:layout_below="@+id/toolbar"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/offline_map_btn"
+        android:layout_centerHorizontal="true"
+        android:id="@+id/maps_list_view"
+        android:headerDividersEnabled="false"
+        android:footerDividersEnabled="false"
+        android:layout_margin="15dp"
+        android:padding="15dp" />
+
 
 </RelativeLayout>

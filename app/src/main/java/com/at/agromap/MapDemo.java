@@ -111,6 +111,71 @@ public class MapDemo extends AppCompatActivity {
     private GraphicsLayer graphicsLayer;
     private Graphic[] highlightGraphics;
 
+    private ProgressDialog basemapLoadProgressDialog;
+
+    // ОБРАТНЫЙ ВЫЗОВ ДЛЯ ПОЛУЧЕНИЯ ПРИМЕРНОГО РАЗМЕРА (В БАЙТАХ)
+    // ЗАГРУЖАЕМОГО ФАЙЛА TPK.
+    private CallbackListener<Long> basemapEstimateSizeListener = new CallbackListener<Long>() {
+        @Override
+        public void onCallback(final Long size) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    basemapLoadProgressDialog = ProgressDialog.show(map.getContext(),
+                            "Примерный размер файла базовой карты",
+                            "Примерно " + (size / 1024) + " Kb", true);
+                }
+            });
+        }
+
+        @Override
+        public void onError(final Throwable error) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (basemapLoadProgressDialog.isShowing()) {
+                        basemapLoadProgressDialog.dismiss();
+                    }
+
+                    new AlertDialog.Builder(map.getContext())
+                            .setTitle("Невозможно определить размер файла базовой карты!")
+                            .setMessage("Подробности: " + error.getMessage())
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setCancelable(true)
+                            .show();
+                }
+            });
+        }
+    };
+    // ОБРАТНЫЙ ВЫЗОВ ДЛЯ ПОЛУЧЕНИЯ СТАТУСА В ПРОЦЕССЕ
+    // ЗАГРУЗКИ БАЗОВОЙ КАРТЫ.
+    private CallbackListener<ExportTileCacheStatus> basemapLoadingStatusListener =
+            new CallbackListener<ExportTileCacheStatus>() {
+        @Override
+        public void onCallback(ExportTileCacheStatus exportTileCacheStatus) {
+
+        }
+
+        @Override
+        public void onError(final Throwable error) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (basemapLoadProgressDialog.isShowing()) {
+                        basemapLoadProgressDialog.dismiss();
+                    }
+
+                    new AlertDialog.Builder(map.getContext())
+                            .setTitle("Ошибка загрузки базовой карты!")
+                            .setMessage("Подробности: " + error.getMessage())
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setCancelable(true)
+                            .show();
+                }
+            });
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         basePath = Environment.getExternalStorageDirectory();
@@ -130,7 +195,6 @@ public class MapDemo extends AppCompatActivity {
         final Toolbar toolbar = (Toolbar) findViewById(R.id.map_demo_toolbar);
         setSupportActionBar(toolbar);
         onlineBasemapLayer = new ArcGISTiledMapServiceLayer(tileUrl);
-        final TextView testPath = (TextView) findViewById(R.id.geodb_file_path);
         resources = getResources();
 
         // ПРОВЕРКА ДОСТУПНОСТИ ВНЕШНЕГО НОСИТЕЛЯ
@@ -403,8 +467,10 @@ public class MapDemo extends AppCompatActivity {
 
         // Create an instance of ExportTileCacheTask for the mapService that
         // supports the exportTiles() operation
+        UserCredentials ao_user = new UserCredentials();
+        ao_user.setUserAccount(getString(R.string.ao_username), getString(R.string.ao_password));
         final ExportTileCacheTask exportTileCacheTask = new ExportTileCacheTask(
-                tileUrl, null);
+                tileUrl, ao_user);
 
         // Set up GenerateTileCacheParameters
         ExportTileCacheParameters params = new ExportTileCacheParameters(
@@ -423,25 +489,26 @@ public class MapDemo extends AppCompatActivity {
                                  final String tileCachePath) {
         // estimate tile cache size
         exportTileCacheTask.estimateTileCacheSize(params,
-                new CallbackListener<Long>() {
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d("Tile loading error", e.getMessage());
-                    }
-
-                    @Override
-                    public void onCallback(Long objs) {
-//                        Log.d("*** tilecachesize: ", "" + objs);
-                        final long tilecachesize = objs / 1024;
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                showToast("Примерный размер кэша: " + tilecachesize + "Kb");
-                            }
-                        });
-                    }
-                });
+//                new CallbackListener<Long>() {
+//
+//                    @Override
+//                    public void onError(Throwable e) {
+//                        Log.d("Tile loading error", e.getMessage());
+//                    }
+//
+//                    @Override
+//                    public void onCallback(Long objs) {
+////                        Log.d("*** tilecachesize: ", "" + objs);
+//                        final long tilecachesize = objs / 1024;
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                showToast("Примерный размер кэша: " + tilecachesize + "Kb");
+//                            }
+//                        });
+//                    }
+//                });
+                basemapEstimateSizeListener);
 
         // create status listener for generateTileCache
         CallbackListener<ExportTileCacheStatus> statusListener = new CallbackListener<ExportTileCacheStatus>() {
@@ -820,6 +887,9 @@ public class MapDemo extends AppCompatActivity {
      * MISCELLANEOUS
      * *********************************************************************************************
      */
+
+
+
     // МЕТОД ДЛЯ ПЕРЕКЛЮЧЕНИЯ ПОДЛОЖКИ (ОНЛАЙН/ОФЛАЙН)
     private void switchMapToLayer() {
         if (map.getLayers().length <= 1) {
@@ -867,12 +937,12 @@ public class MapDemo extends AppCompatActivity {
     }
 
     // Преобразование даты Timestamp -> локализованная дата
-    private String getDate(long time) {
-        Calendar cal = Calendar.getInstance(new Locale("RU"));
-        cal.setTimeInMillis(time);
-        String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
-        return date;
-    }
+//    private String getDate(long time) {
+//        Calendar cal = Calendar.getInstance(new Locale("RU"));
+//        cal.setTimeInMillis(time);
+//        String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+//        return date;
+//    }
 
 
 }

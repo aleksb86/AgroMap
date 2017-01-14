@@ -1,43 +1,17 @@
 <resources>
     <string name="app_name">Agro Map</string>
 
+    <!--ЗАГРУЗКА БАЗОВОЙ КАРТЫ-->
     <!--URL Map-сервиса, предоставляющего базовую карту-->
     <string name="basemap_service_url" translatable="false">http://sampleserver6.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer</string>
-
-    <!--Кнопки главного меню-->
-    <string name="select_level">Выбрать уровень детализации</string>
-    <string name="download">Загрузить фрагмент</string>
-    <string name="switch_map">Переключить карту</string>
-    <string name="basemap_grp"></string>
-    <string name="layers_grp"></string>
-
-    <!--Текст логотипа агротерра на стартовом лэйауте-->
-    <string name="logo_text" translatable="false">
-        <![CDATA[ <font color=#e6b800>АГРО</font><font color=#331a00>ТЕРРА</font>]]>
-    </string>
-    <string name="map_demo_btn_text">Открыть офлайн карту</string>
-
-    <!--Ошибки создания каталогов для файлов приложения-->
-    <string name="unable_to_write_sd_card_title">SD карта недоступна!</string>
-    <string name="error_creating_dir_dialog_title">Ошибка при создании каталога приложения!</string>
-    <string name="unable_to_create_main_dir">Ошибка создания каталога: </string>
-    <string name="unable_to_write_sd_card">Внешний носитель недоступен или защищен от записи!</string>
-
-    <!--Название каталога для базовых карт и баз геоданных-->
-    <string name="geodb_files_dir">geodb</string>
-    <string name="geodb_file_name">local_geodatabase.geodatabase</string>
-    <string name="tpk_basemap_file_name">basemap_file.tpk</string>
-    <string name="offlinemap_files_dir">OfflineMap</string>
-
-    <!--Индикатор загрузки-->
-    <string name="loading_text">Загрузка...</string>
-    <string name="loading_map_text">Инициализация карты...</string>
-    <string name="loading_layer_text">Загрузка слоя...</string>
-
+    <string-array name="basemap_service_urls">
+        <item>http://sampleserver6.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer</item>
+        <item>http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</item>
+        <item>http://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer</item>
+    </string-array>
     <!-- Сообщение о невозможности загрузки карты -->
     <string name="unable_map_load_dialog_title">Ошибка загрузки базовой карты</string>
     <string name="unable_map_load_dialog_msg">Не обнаружен файл базовой карты, нет доступа к базовой карте онлайн!</string>
-
     <!--уровни детализации базовой карты-->
     <string-array name="level_items_name">
         <item>Уровень 1</item>
@@ -64,11 +38,49 @@
         <item>305.74811314055756</item>
     </string-array>
 
-    <!--Загрузка слоев данных-->
+    <!--Кнопки главного меню-->
+    <string name="select_level">Выбрать уровень детализации</string>
+    <string name="download">Загрузить фрагмент</string>
+    <string name="switch_map">Переключить карту</string>
+    <string name="basemap_grp"></string>
+    <string name="layers_grp"></string>
+
+    <!--ЭЛЕМЕНТЫ MainActivity-->
+    <!--Текст логотипа компании на стартовом активити (MainActivity)-->
+    <string name="logo_text" translatable="false">
+        <![CDATA[ <font color=#e6b800>АГРО</font><font color=#331a00>ТЕРРА</font>]]>
+    </string>
+    <string name="map_demo_btn_text">Открыть офлайн карту</string>
+    <string name="spinner_maps_on_device">Карты на устройстве</string>
+    <string name="spinner_maps_online">Карты онлайн</string>
+    <string name="spinner_maps_all">Все</string>
+
+    <!--Ошибки создания каталогов для файлов приложения-->
+    <string name="unable_to_write_sd_card_title">SD карта недоступна!</string>
+    <string name="error_creating_dir_dialog_title">Ошибка при создании каталога приложения!</string>
+    <string name="unable_to_create_main_dir">Ошибка создания каталога: </string>
+    <string name="unable_to_write_sd_card">Внешний носитель недоступен или защищен от записи!</string>
+
+    <!--Название каталога для базовых карт и баз геоданных-->
+    <string name="geodb_files_dir">geodb</string>
+    <string name="geodb_file_name">local_geodatabase.geodatabase</string>
+    <string name="tpk_basemap_file_name">basemap_file.tpk</string>
+    <string name="offlinemap_files_dir">OfflineMap</string>
+
+    <!--Индикатор загрузки-->
+    <string name="loading_text">Загрузка...</string>
+    <string name="loading_map_text">Инициализация карты...</string>
+    <string name="loading_layer_text">Загрузка слоя...</string>
+
+    <!--ЗАГРУЗКА СЛОЕВ ДАННЫХ-->
     <string name="download_layers">Загрузить слои данных</string>
     <string name="show_hide_layers">Скрыть/отобразить слои</string>
 
-    <!--Аккаунт для доступа к Feature service-->
+    <!--АККАУНТЫ И КЛЮЧИ API - ОБЯЗАТЕЛЬНО ЗАЩИТИТЬ В РЕЛИЗНОЙ ВЕРСИИ!!!-->
+    <!--Аккаунт для сервиса экспорта базовой карты (arcgis online)-->
+    <string name="ao_username">aleksb86</string>
+    <string name="ao_password">Gipn0jab@</string>
+    <!--Аккаунт для доступа к векторному слою miloslavskoe_pr -->
     <string name="username">aleksey.boev</string>
     <string name="password">Mahth4EiW8</string>
 

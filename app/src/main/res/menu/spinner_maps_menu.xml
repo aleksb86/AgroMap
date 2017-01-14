@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/maps_on_device"
+        app:showAsAction="never"
+        android:title="@string/spinner_maps_on_device"/>
+    <item
+        android:id="@+id/maps_online"
+        app:showAsAction="never"
+        android:title="@string/spinner_maps_online"/>
+    <item
+        android:id="@+id/maps_all"
+        app:showAsAction="never"
+        android:title="@string/spinner_maps_all"/>
+</menu>
